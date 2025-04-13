@@ -1,14 +1,13 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-import User from "./user.js";
-import Train from "./train.js";
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
+const User = require("./User");
+const Train = require("./Train");
 
 const Booking = sequelize.define("Booking", {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-   autoIncrement: true,
+    autoIncrement: true,
   },
   userId: {
     type: DataTypes.INTEGER,
@@ -42,4 +41,4 @@ const Booking = sequelize.define("Booking", {
   },
 });
 
-export default Booking;
+module.exports = Booking;

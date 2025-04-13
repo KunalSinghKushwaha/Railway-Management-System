@@ -1,81 +1,91 @@
-const pool = require("../config/db"); // PostgreSQL connection
+import Booking from "../models/booking.js";
+import Train from "../models/train.js";
+import authMiddleware from "../middleware/authmiddleware.js";
 
-// Book a Train Ticket
-exports.bookTrain = async (req, res) => {
-  const { user_id, train_id, seats_booked } = req.body;
+// Book a train
+export async function bookTrain(req, res) {
+  const userId = req.params.id; // Get userId from token
+  const { trainId, seatClass, date } = req.body;
 
   try {
-    // Check if the train exists and has enough available seats
-    const train = await pool.query("SELECT * FROM trains WHERE id = $1", [train_id]);
+    // Validate required fields
+    if (!trainId || !seatClass || !date) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-    if (train.rows.length === 0) {
+    const train = await Train.findByPk(trainId);
+    if (!train) {
       return res.status(404).json({ error: "Train not found" });
     }
 
-    if (train.rows[0].seats_available < seats_booked) {
-      return res.status(400).json({ error: "Not enough seats available" });
+    if (train.seatsAvailable < 1) {
+      return res.status(400).json({ error: "No seats available" });
     }
 
-    // Insert booking into database
-    const newBooking = await pool.query(
-      "INSERT INTO bookings (user_id, train_id, seats_booked) VALUES ($1, $2, $3) RETURNING *",
-      [user_id, train_id, seats_booked]
-    );
+    const booking = await Booking.create({
+      userId,
+      trainId,
+      seatClass,
+      date,
+    });
 
-    // Update train seats availability
-    await pool.query(
-      "UPDATE trains SET seats_available = seats_available - $1 WHERE id = $2",
-      [seats_booked, train_id]
-    );
+    // Update available seats
+    train.seatsAvailable -= 1;
+    await train.save();
 
-    res.status(201).json({ message: "Booking successful", booking: newBooking.rows[0] });
+    res.status(201).json({ message: "Booking successful", booking });
   } catch (err) {
-    console.error(err.message);
+    console.error("Error booking train:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
-// Get All Bookings for a User
-exports.getUserBookings = async (req, res) => {
-  const { user_id } = req.params;
+
+// Get bookings for a user
+export async function getUserBookings(req, res) {
+  const userId = req.user.id;
 
   try {
-    const bookings = await pool.query(
-      "SELECT b.id, t.name AS train_name, t.source, t.destination, b.seats_booked FROM bookings b JOIN trains t ON b.train_id = t.id WHERE b.user_id = $1",
-      [user_id]
-    );
+    const bookings = await Booking.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Train,
+          attributes: ["name", "source", "destination"],
+        },
+      ],
+    });
 
-    res.json(bookings.rows);
+    res.json(bookings);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error fetching bookings:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
-// Cancel a Booking
-exports.cancelBooking = async (req, res) => {
-  const { id } = req.params; // Booking ID
+
+// Cancel a booking
+export async function cancelBooking(req, res) {
+  const { id } = req.params;
 
   try {
-    // Find the booking
-    const booking = await pool.query("SELECT * FROM bookings WHERE id = $1", [id]);
+    const booking = await Booking.findByPk(id);
 
-    if (booking.rows.length === 0) {
+    if (!booking) {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    // Update available seats in the train
-    await pool.query(
-      "UPDATE trains SET seats_available = seats_available + $1 WHERE id = $2",
-      [booking.rows[0].seats_booked, booking.rows[0].train_id]
-    );
+    const train = await Train.findByPk(booking.train_id);
+    if (train) {
+      train.seats_available += booking.seats_booked;
+      await train.save();
+    }
 
-    // Delete the booking
-    await pool.query("DELETE FROM bookings WHERE id = $1", [id]);
+    await booking.destroy();
 
     res.json({ message: "Booking canceled successfully" });
   } catch (err) {
-    console.error(err.message);
+    console.error("Error canceling booking:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}

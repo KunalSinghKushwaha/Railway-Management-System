@@ -1,37 +1,40 @@
-require("dotenv").config(); // Load environment variables
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const { sequelize, connectDB } = require("./config/db"); // Import database connection
-const authRoutes = require("./routes/authroutes"); // Import authentication routes
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
+import {sequelize,connectDB } from "./config/db.js";
+import authRoutes from "./routes/authroutes.js";
+import trainroutes from "./routes/trainroutes.js";
+import bookingroutes from "./routes/bookingroutes.js";
+dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:3000" })); // Allow frontend to communicate with backend
-app.use(bodyParser.json()); // Parse JSON requests
-app.use(bodyParser.urlencoded({ extended: true })); // Parse URL-encoded data
+app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:3000" }));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true })); 
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/trains", trainroutes);
+app.use("/api/bookings", bookingroutes);
 
-// Root Route
-app.get("/", (req, res) => {
-  res.send("🚀 Railway Management System API is Running...");
+app.get("/", (_req, res) => {
+  res.send("Railway Management System API is Running...");
 });
 
-// Start Server & Connect to Database
+// Server setup
 const PORT = process.env.PORT || 5000;
 
-connectDB() // Connect to the database
+connectDB()
   .then(() => {
-    sequelize.sync({ alter: true }) // Sync models to database
+    sequelize.sync({ alter: true })
       .then(() => {
-        console.log("✅ Database Synchronized");
+        console.log(" Database Synchronized");
         app.listen(PORT, () => {
-          console.log(`🚀 Server running on http://localhost:${PORT}`);
+          console.log(` Server running on http://localhost:${PORT}`);
         });
       })
-      .catch((error) => console.error("❌ Error syncing database:", error.message));
+      .catch((error) => console.error(" Error syncing database:", error.message));
   })
-  .catch((error) => console.error("❌ Database Connection Failed:", error.message));
+  .catch((error) => console.error(" Database Connection Failed:", error.message));

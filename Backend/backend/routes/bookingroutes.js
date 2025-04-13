@@ -1,16 +1,16 @@
-const express = require("express");
-const { bookTrain, getUserBookings, cancelBooking } = require("../controllers/bookingcontroller");
-const authMiddleware = require("../middleware/authMiddleware");
+import { Router } from "express";
+import { bookTrain, getUserBookings, cancelBooking } from "../controllers/bookingcontroller.js";
+import authMiddleware from "../middleware/authmiddleware.js";
 
-const router = express.Router();
+const router = Router();
 
-// Book a train (Protected Route)
-router.post("/book", authMiddleware, bookTrain);
 
-// Get all bookings for a user (Protected Route)
+router.post("/book/:id", authMiddleware, bookTrain);
+
+
 router.get("/my-bookings", authMiddleware, getUserBookings);
 
-// Cancel a booking (Protected Route)
+
 router.delete("/cancel/:id", authMiddleware, cancelBooking);
 
-module.exports = router;
+export default router;

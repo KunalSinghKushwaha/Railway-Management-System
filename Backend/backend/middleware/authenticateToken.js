@@ -1,8 +1,7 @@
 import pkg from 'jsonwebtoken';
 const { verify } = pkg;
 
-const authMiddleware = (req, res, next) => {
-  
+const authenticateToken = (req, res, next) => {
   const token = req.header("Authorization");
 
   if (!token) {
@@ -10,13 +9,12 @@ const authMiddleware = (req, res, next) => {
   }
 
   try {
-    
     const decoded = verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
-    req.user = decoded; 
-    next(); 
+    req.user = decoded;
+    next();
   } catch (err) {
-    res.status(403).json({ message: "Invalid or expired token." });
+    return res.status(403).json({ message: "Invalid or expired token." });
   }
 };
 
-export default authMiddleware;
+export default authenticateToken;

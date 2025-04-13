@@ -1,87 +1,100 @@
-const pool = require("../config/db"); // PostgreSQL connection
+import Train from "../models/train.js";
 
 // Get All Trains
-exports.getTrains = async (req, res) => {
+export async function getTrains(_req, res) {
   try {
-    const trains = await pool.query("SELECT * FROM trains ORDER BY id ASC");
-    res.json(trains.rows);
+    const trains = await Train.findAll({
+      order: [["id", "ASC"]],
+    });
+    res.json(trains);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error fetching trains:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
 // Get Train by ID
-exports.getTrainById = async (req, res) => {
+export async function getTrainById(req, res) {
   const { id } = req.params;
 
   try {
-    const train = await pool.query("SELECT * FROM trains WHERE id = $1", [id]);
-
-    if (train.rows.length === 0) {
+    const train = await Train.findByPk(id);
+    if (!train) {
       return res.status(404).json({ error: "Train not found" });
     }
-
-    res.json(train.rows[0]);
+    res.json(train);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error fetching train:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
 // Add New Train
-exports.addTrain = async (req, res) => {
-  const { name, source, destination, departure_time, arrival_time, seats_available } = req.body;
+export async function addTrain(req, res) {
+  const { name, number, source, destination, departureTime, arrivalTime, seatsAvailable, fare } = req.body;
 
   try {
-    const newTrain = await pool.query(
-      "INSERT INTO trains (name, source, destination, departure_time, arrival_time, seats_available) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [name, source, destination, departure_time, arrival_time, seats_available]
-    );
+    const newTrain = await Train.create({
+      name,
+      number,
+      source,
+      destination,
+      departureTime,
+      arrivalTime,
+      seatsAvailable,
+      fare,
+    });
 
-    res.status(201).json({ message: "Train added successfully", train: newTrain.rows[0] });
+    res.status(201).json({ message: "Train added successfully", train: newTrain });
   } catch (err) {
-    console.error(err.message);
+    console.error("Error adding train:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
 // Update Train
-exports.updateTrain = async (req, res) => {
+export async function updateTrain(req, res) {
   const { id } = req.params;
-  const { name, source, destination, departure_time, arrival_time, seats_available } = req.body;
+  const { name, number, source, destination, departureTime, arrivalTime, seatsAvailable, fare } = req.body;
 
   try {
-    const updatedTrain = await pool.query(
-      "UPDATE trains SET name = $1, source = $2, destination = $3, departure_time = $4, arrival_time = $5, seats_available = $6 WHERE id = $7 RETURNING *",
-      [name, source, destination, departure_time, arrival_time, seats_available, id]
-    );
-
-    if (updatedTrain.rows.length === 0) {
+    const train = await Train.findByPk(id);
+    if (!train) {
       return res.status(404).json({ error: "Train not found" });
     }
 
-    res.json({ message: "Train updated successfully", train: updatedTrain.rows[0] });
+    await train.update({
+      name,
+      number,
+      source,
+      destination,
+      departureTime,
+      arrivalTime,
+      seatsAvailable,
+      fare,
+    });
+
+    res.json({ message: "Train updated successfully", train });
   } catch (err) {
-    console.error(err.message);
+    console.error("Error updating train:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
 
 // Delete Train
-exports.deleteTrain = async (req, res) => {
+export async function deleteTrain(req, res) {
   const { id } = req.params;
 
   try {
-    const deletedTrain = await pool.query("DELETE FROM trains WHERE id = $1 RETURNING *", [id]);
-
-    if (deletedTrain.rows.length === 0) {
+    const train = await Train.findByPk(id);
+    if (!train) {
       return res.status(404).json({ error: "Train not found" });
     }
 
+    await train.destroy();
     res.json({ message: "Train deleted successfully" });
   } catch (err) {
-    console.error(err.message);
+    console.error("Error deleting train:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}

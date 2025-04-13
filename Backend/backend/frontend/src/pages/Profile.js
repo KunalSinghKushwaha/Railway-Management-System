@@ -18,11 +18,11 @@ const Profile = () => {
     } catch (err) {
       setError("Failed to load bookings.");
     }
-  }, [user]); //  Dependency: `user`
+  }, [user]); // ✅ Dependency: `user`
 
   useEffect(() => {
     fetchBookings();
-  }, [fetchBookings]); 
+  }, [fetchBookings]); // ✅ No more warning!
 
   return (
     <div className="container mt-5">

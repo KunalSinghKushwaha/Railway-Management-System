@@ -1,6 +1,5 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
 
 const Train = sequelize.define("Train", {
   id: {
@@ -43,4 +42,4 @@ const Train = sequelize.define("Train", {
   },
 });
 
-export default Train;
+module.exports = Train;

@@ -1,68 +1,86 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const pool = require("../config/db"); // PostgreSQL connection
-require("dotenv").config();
+import { hash, compare } from "bcryptjs";
+import pkg from "jsonwebtoken";
+const {sign} = pkg;
+import dotenv from "dotenv";
+import { findOne, createUser } from "../models/user.js";
+import { query } from "../config/db.js"; 
+import User from "../models/user.js";
+dotenv.config();
 
-// User Registration
-exports.registerUser = async (req, res) => {
-    try {
-      const { name, email, password } = req.body;
-  
-      // Check if user already exists
-      let user = await User.findOne({ where: { email } });
-      if (user) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-  
-      // Hash password before saving
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      // Create new user
-      user = await User.create({
-        name,
-        email,
-        password: hashedPassword, // Store hashed password
-      });
-  
-      res.status(201).json({ message: "User registered successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error });
-    }
-  };
 
-// User Login
-exports.loginUser = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-  
-      // Check if user exists
-      const user = await User.findOne({ where: { email } });
-      if (!user) {
-        return res.status(400).json({ message: "Invalid credentials" });
-      }
-  
-      // Compare hashed password
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ message: "Invalid credentials" });
-      }
-  
-      // Generate JWT token
-      const token = jwt.sign({ userId: user.id, role: user.role }, "your_secret_key", { expiresIn: "1h" });
-  
-      res.status(200).json({ message: "Login successful", token });
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error });
-    }
-  };
-// Get User Profile (Protected Route)
-exports.getProfile = async (req, res) => {
+export async function registerUser(req, res) {
   try {
-    const user = await pool.query("SELECT id, name, email FROM users WHERE id = $1", [req.user.id]);
-    res.json(user.rows[0]);
+    const { username, email, password } = req.body;
+
+    
+    let user = await findOne({ where: { email } });
+    if (user) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    
+    const hashedPassword = await hash(password, 10);
+
+    
+     user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+    });
+
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
+
+
+export async function loginUser(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    
+    const user = await findOne({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    
+    const isMatch = await compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    
+    const token = sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET || "your_secret_key",
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({ message: "Login successful", token });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
+
+
+
+export async function getProfile(req, res) {
+  try {
+    const user = await User.findByPk(req.user.userId, {
+      attributes: ['id', 'username', 'email'],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
   } catch (err) {
-    console.error(err.message);
+    console.error("Error in getProfile:", err.message);
     res.status(500).json({ error: "Server error" });
   }
-};
+}
+
+
